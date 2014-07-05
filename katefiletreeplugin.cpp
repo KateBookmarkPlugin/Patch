@@ -184,7 +184,7 @@ KateFileTreePluginView::KateFileTreePluginView (Kate::MainWindow *mainWindow, Ka
   // init console
   kDebug(debugArea()) << "BEGIN: mw:" << mainWindow;
 
-  m_toolView = mainWindow->createToolView (plug,"kate_private_plugin_katefiletreeplugin", Kate::MainWindow::Left, SmallIcon("document-open"), i18n("Documents2"));
+  m_toolView = mainWindow->createToolView (plug,"kate_private_plugin_katefiletreeplugin", Kate::MainWindow::Left, SmallIcon("document-open"), i18n("Documents"));
  // m_toolView = mainWindow->createToolView (plug,"kate_private_plugin_katefiletreeplugin", Kate::MainWindow::Left, SmallIcon("document-open"), i18n("Documents2"));
   m_fileTree = new KateFileTree(m_toolView);
   m_fileTree->setSortingEnabled(true);
@@ -284,7 +284,10 @@ KateFileTree *KateFileTreePluginView::tree()
 void KateFileTreePluginView::documentOpened(KTextEditor::Document *doc)
 {
   kDebug(debugArea()) << "open" << doc;
-
+/******************************************************/
+//   //readSessionConfig(NULL,"BookmarkPlusPlus");
+  
+/********************************************************/
   if (!m_loadingDocuments) {
     m_documentModel->documentOpened(doc);
     m_proxyModel->invalidate();
@@ -409,19 +412,27 @@ void KateFileTreePluginView::setHasLocalPrefs(bool h)
   m_hasLocalPrefs = h;
 }
 
+/*
+ *  citanje bookmarkova iz sesije
+ * 
+*/
 void KateFileTreePluginView::readSessionConfig(KConfigBase* config, const QString& group)
 {
+  qDebug() << "\nPoziva se readSessionConfig sa grupom:" << group << "\n\n";
   if(group=="BookmarkPlusPlus")
   {
-    //qDebug()<<"Jel radi ovo jebote";
-    qDebug()<<toLoadBookmarks->url().prettyUrl();
+    qDebug()<< "\nURL: " << toLoadBookmarks->url().prettyUrl();
     //qDebug()<<"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
     KConfigGroup cg(KGlobal::config(),group);
     /*******************************************************    lista bookmarkova (serializedData)  */
-    QVariantList serializedData=cg.readEntry(toLoadBookmarks->url().prettyUrl(),QVariantList());
-    qDebug()<<serializedData;
+    QVariantList serializedData=cg.readEntry(toLoadBookmarks->url().prettyUrl(), QVariantList());
+    //qDebug()<<serializedData;
+    qDebug() << "\n\ntoLoadBookmarks: " <<
+     toLoadBookmarks->documentName()
+    << "\n\n";
     
     m_bookmap[toLoadBookmarks] = serializedData;
+    qDebug() << "\nSerialized data: " << serializedData << "\n\n";
     //qDebug()<<"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
     return;
   }
@@ -468,9 +479,7 @@ void KateFileTreePluginView::slotAboutToLoadDocuments()
 
 void KateFileTreePluginView::slotDocumentsLoaded(const QList<KTextEditor::Document*> &docs)
 {
-  m_documentModel->documentsOpened(docs);
-  m_loadingDocuments = false;
-  viewChanged();
+
   foreach(KTextEditor::Document* doc, docs)
   {
     connect(doc,SIGNAL(marksChanged(KTextEditor::Document*)),this,SLOT(slotMarksChanged(KTextEditor::Document *)));
@@ -478,11 +487,15 @@ void KateFileTreePluginView::slotDocumentsLoaded(const QList<KTextEditor::Docume
     readSessionConfig(NULL,"BookmarkPlusPlus");
     
   }
+  m_documentModel->documentsOpened(docs);
+  m_loadingDocuments = false;
+  viewChanged();  
+  
 }
 
 void KateFileTreePluginView::slotMarksChanged(KTextEditor::Document* d)
 {
-  qDebug()<<d->documentName();
+  qDebug()<< "\nslotMarksChanged: document name: " << d->documentName() << "\n";
   toLoadBookmarks=d;
   readSessionConfig(NULL,"BookmarkPlusPlus");
 }

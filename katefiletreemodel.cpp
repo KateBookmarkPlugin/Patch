@@ -25,6 +25,7 @@
 #include <KColorScheme>
 #include <KColorUtils>
 #include <klocale.h>
+#include <katefiletreeplugin.h>
 
 #include <ktexteditor/document.h>
 
@@ -401,6 +402,31 @@ KateFileTreeModel::~KateFileTreeModel()
 
 }
 
+/***************************************************/
+void KateFileTreeModel::refreshBookmarks(KTextEditor::Document* doc, ProxyItem* item){
+  
+  qDebug() << "\n\nrefreshBookmarks()\n";
+  qDebug() << "\nLista bookmarkova: " << (*m_bookmap)[doc] << "\n";
+    
+  QVariantList::iterator iter=(*m_bookmap)[doc].begin();
+  QVariantList::iterator end=(*m_bookmap)[doc].end();
+  int i=0;
+  for(;iter!=end;iter++)
+  {
+    //qDebug() << "\n" << i << "\n";
+    if(!(i%2))
+    {
+      ProxyItem *anchi = new ProxyItem(iter->toString());        
+      item->addChild(anchi);
+    }
+      i++;
+  }
+  
+  
+}
+
+/***************************************************/
+
 bool KateFileTreeModel::shadingEnabled()
 {
   return m_shadingEnabled;
@@ -709,6 +735,8 @@ void KateFileTreeModel::setListMode(bool lm)
 
 void KateFileTreeModel::documentOpened(KTextEditor::Document *doc)
 {
+/*  KateFileTreePluginView::readSessionConfig(NULL, "BookmarkPlusPlus");
+ */ 
   QString path = doc->url().path();
   bool isEmpty = false;
   QString host;
@@ -722,7 +750,7 @@ void KateFileTreeModel::documentOpened(KTextEditor::Document *doc)
       path="["+host+"]"+path;  
     
   }
-  qDebug()<<"\n\n\n\n**********************************************\n\n\n";
+  qDebug()<<"\n\n\n\nDOCUMENT OPENED!!!\n\n\n";
   ProxyItem *item = new ProxyItem(path, 0);
   
   /**********************************************************/
@@ -730,17 +758,36 @@ void KateFileTreeModel::documentOpened(KTextEditor::Document *doc)
   std::string path2 = path.toUtf8().constData();
   std::cout << "\n\nPutanja:\t" + path2 + "\n\n"; /* npr: /home/anchi/Desktop/za_kate.txt */
   
-  ProxyItem *ancha = new ProxyItem("ancha");
-  ProxyItem *miki = new ProxyItem("miki");
-  ancha->m_type = ProxyItem::Bookmark;
-  miki->m_type = ProxyItem::Bookmark;
-  ancha->m_bookmark = true;
-  miki->m_bookmark = true;
-  item -> addChild(ancha);
-  item -> addChild(miki);
-  item -> m_bookmark_children_count += 2;
+//   ProxyItem *ancha = new ProxyItem("ancha");
+//   ProxyItem *miki = new ProxyItem("miki");
+//   ancha->m_type = ProxyItem::Bookmark;
+//   miki->m_type = ProxyItem::Bookmark;
+//   ancha->m_bookmark = true;
+//   miki->m_bookmark = true;
+//   item -> addChild(ancha);
+//   item -> addChild(miki);
+//   item -> m_bookmark_children_count += 2;
   /*********************************************************/
- 
+  
+  refreshBookmarks(doc, item);
+//   qDebug() << "\nLista bookmarkova: " << (*m_bookmap)[doc] << "\n";
+//   
+//   QVariantList::iterator iter=(*m_bookmap)[doc].begin();
+//   QVariantList::iterator end=(*m_bookmap)[doc].end();
+//   int i=0;
+//   for(;iter!=end;iter++)
+//   {
+//     qDebug() << "\n" << i << "\n";
+//     if(!(i%2))
+//     {
+//       ProxyItem *anchi = new ProxyItem(iter->toString()); 
+//       item->addChild(anchi);
+//     }
+//     i++;
+//   }
+  
+  /************************************************************/
+  
   if(isEmpty)
     item->setFlag(ProxyItem::Empty);
   
@@ -761,11 +808,15 @@ void KateFileTreeModel::documentOpened(KTextEditor::Document *doc)
 void KateFileTreeModel::documentsOpened(const QList<KTextEditor::Document*> &docs)
 {
   beginResetModel();
+  qDebug() << "\n\ndocumentsOpened()\n\n";
 
   /***************************************:))))))))))))))))))))))))))*/
   
   foreach(KTextEditor::Document *doc, docs) {
+   // ProxyItem *item = m_docmap[doc];
+
     if (m_docmap.contains(doc)) {
+      //refreshBookmarks(doc, m_docmap[doc]);
       documentNameChanged(doc);
     } else {
       documentOpened(doc);
@@ -781,24 +832,80 @@ void KateFileTreeModel::documentModifiedChanged(KTextEditor::Document *doc)
   kDebug(debugArea()) << "BEGIN!";
   
   ProxyItem *item = m_docmap[doc];
-  qDebug()<<"************************************************";
-  qDebug()<<doc->documentName();
-  qDebug()<<"documentModifiedChanged:"<<(*m_bookmap)[doc];
-  QVariantList::iterator iter=(*m_bookmap)[doc].begin();
-  QVariantList::iterator end=(*m_bookmap)[doc].end();
-  int i=0;
-  for(;iter!=end;iter++)
-  {
-    if(!(i%2))
-    {
-      ProxyItem *anchi = addChild(anchi);
-    }
-  }
-  if(!item)
+  qDebug() << "************************************************";
+  qDebug() << doc->documentName();
+  
+//   qDebug() << "\n\nbroj dece pre refreshBookmarks: " << item->childCount() << "\n\n";
+//   refreshBookmarks(doc, item);
+//   
+//   qDebug() << "\n\nbroj dece posle refreshBookmarks: " << item->childCount() << "\n\n";
+//   
+//   documentClosed(doc);
+//   documentOpened(doc);
+  
+  /* brisemo decu pa pozivamo refresh gde se dodaju */
+  foreach(ProxyItem* child, item->children())
+    item -> remChild(child);
+  refreshBookmarks(doc, item);
+  
+    ProxyItemDir* parent = m_docmap[doc]->parent();
+    QModelIndex parent_index = parent == m_root ? QModelIndex() : createIndex(parent->row(), 0, parent);
+    beginRemoveRows(parent_index, item->row(), item->row());
+    parent -> remChild(item);
+    endRemoveRows();
+    handleInsert(item);
+    
+    handleEmptyParents(parent);
+
+  /*for(QVariantList::const_iterator it = (*m_bookmap)[doc].begin();
+    it!=(*m_bookmap)[doc].end(); it++)
+    handleInsert(new ProxyItem(it -> toString()));*/
+  
+  
+//   documentClosed(doc);
+//   documentOpened(doc);
+//   
+  
+  
+//   parent -> addChild(item);
+//   
+ // documentOpened(doc);
+  
+  /********************************************************/
+//   ProxyItem *novi = new ProxyItem("novi");
+//   item -> addChild(novi);
+  /***********************************************************/
+  
+  qDebug()<< "documentModifiedChanged: " << (*m_bookmap)[doc];
+
+//   QVariantList::iterator iter=(*m_bookmap)[doc].begin();
+//   QVariantList::iterator end=(*m_bookmap)[doc].end();
+//   int i=0;
+//   for(;iter!=end;iter++)
+//   {
+//     if(!(i%2))
+//     {
+//       ProxyItem *anchi = new ProxyItem(iter->toString()); 
+//       item->addChild(anchi);
+//     }
+//     i++;
+//   }
+  
+  
+   if(!item)
     return;
 
   if(doc->isModified()) {
     item->setFlag(ProxyItem::Modified);
+    /**********************************************************/
+   
+//    ProxyItem* parent = m_docmap[doc]->parent();
+//    parent -> remChild(item);
+  // handleInsert(item);
+    
+    
+    // refreshBookmarks(doc, item);
+    /**********************************************************/
     kDebug(debugArea()) << "modified!";
   }
   else {
@@ -883,7 +990,7 @@ void KateFileTreeModel::documentEdited(KTextEditor::Document *doc)
     return;
   }
 
-  ProxyItem *item = m_docmap[doc];
+  ProxyItem *item = m_docmap[doc];  
   kDebug(debugArea()) << "adding editHistory" << item;
   m_editHistory.removeAll(item);
   m_editHistory.prepend(item);

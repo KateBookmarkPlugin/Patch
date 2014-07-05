@@ -72,6 +72,12 @@ class KateFileTreeModel : public QAbstractItemModel
     bool showFullPathOnRoots(void);
     void setShowFullPathOnRoots(bool);
     
+    /**********************************************************************************/
+    
+    void refreshBookmarks(KTextEditor::Document* doc, ProxyItem* item);
+    
+    /**********************************************************************************/
+    
   public Q_SLOTS:
     void documentOpened(KTextEditor::Document *);
     void documentClosed(KTextEditor::Document *);
